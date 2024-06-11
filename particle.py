@@ -8,16 +8,9 @@ class particle:
         self.yCoord = yCoord;
         self.zCoord = zCoord;
         self.next = None;
-        self.contactSet = set();
 
     def setNext(self, nextPar):
         self.next = nextPar;
-
-    def addContact(self, contactPar):
-        self.contactSet.add(contactPar);
-
-    def getContacts(self):
-        return self.contactSet;
 
 # Glycine
 class G_particle(particle):
