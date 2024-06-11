@@ -12,10 +12,13 @@ PARTICLE_TYPES = [G_particle, P_particle, A_particle, V_particle,\
 # The total amount that will be placed, not including the origin and
 # the particle immediately after.
 NUM_PARTICLES = 98;
-# Tracking overall results.
-finalResults_counts = [0, 0, 0, 0];
-bySeparation_inContactResults = {};
-bySeparation_notInContactResults = {};
+# Tracking results.
+inContactResults = {};
+notInContactResults = {};
+expected_inContact = 0;
+expected_noContact = 0;
+unexpected_inContact = 0;
+unexpected_noContact = 0;
 
 # Repeating 1000 times.
 for i in range(1000):
@@ -48,28 +51,42 @@ for i in range(1000):
         distances = populateContacts(par, particleSet);
     # Relative to each particle, find the incidence of non-contacts in a blob.
     results = blobProbabilities(particleSet);
-    finalResults_counts[0] += results[0];
-    finalResults_counts[1] += results[1];
-    finalResults_counts[2] += results[2];
-    finalResults_counts[3] += results[3];
-    for key in results[4]:
-        if key in bySeparation_inContactResults.keys():
-            bySeparation_inContactResults[key] += results[4][key];
+    # Adding results to overall counters.
+    inContactTmp = results[0];
+    notInContactTmp = results[1];
+    expected_inContact += results[2];
+    unexpected_inContact += results[3];
+    expected_noContact += results[4];
+    unexpected_noContact += results[5];
+    for key in inContactTmp:
+        if key in inContactResults.keys():
+            inContactResults[key] = inContactResults[key] + inContactTmp[key];
         else:
-            bySeparation_inContactResults[key] = results[4][key];
-    for key in results[5]:
-        if key in bySeparation_notInContactResults.keys():
-            bySeparation_notInContactResults[key] += results[5][key];
+            inContactResults[key] = inContactTmp[key];
+    for key in notInContactTmp:
+        if key in notInContactResults.keys():
+            notInContactResults[key] = notInContactResults[key] + notInContactTmp[key];
         else:
-            bySeparation_notInContactResults[key] = results[5][key];
-    print(f"Step {i}/1000 Completed")
-
-print(f"Expected contact probability: {finalResults_counts[0]/(finalResults_counts[0] + finalResults_counts[1])},\
- Unexpected contact probability: {finalResults_counts[2]/(finalResults_counts[2] + finalResults_counts[3])}")
-bySeparation_probabilities = {};
-for key in bySeparation_notInContactResults:
-    if key in bySeparation_inContactResults.keys():
-        bySeparation_probabilities[key] = bySeparation_inContactResults[key]/(bySeparation_inContactResults[key] + bySeparation_notInContactResults[key]);
+            notInContactResults[key] = notInContactTmp[key];
+    print(f"Step {i + 1}/1000 Completed")
+# Computing some final stats.
+# 1. Calculating the contact probability by blob separation (distance - blob size).
+bySeparation_contactProbabilities = {};
+for key in notInContactResults:
+    if key in inContactResults.keys():
+        bySeparation_contactProbabilities[key] = inContactResults[key]/(inContactResults[key] + notInContactResults[key]);
     else:
-        bySeparation_probabilities[key] = 0;
-print(f"Probabilties by blob overlap: {bySeparation_probabilities}")
+        bySeparation_contactProbabilities[key] = 0;
+# 2. Calculating the overall contact probability.
+contactProb = (expected_inContact + unexpected_inContact)/(expected_inContact + expected_noContact + unexpected_noContact + unexpected_inContact);
+# 3. Calculating the probability of a contact being within a blob (expected contact).
+contact_expectedProb = expected_inContact/(expected_inContact + unexpected_inContact);
+# 4. Calculating the probability of a non-contact being outside of a blob (expected non-contact).
+nonContact_expectedProb = expected_noContact/(expected_noContact + unexpected_noContact);
+# 5. Calculating the probability of a result going as expected according to the blob based model.
+BBM_accuracy = (expected_inContact + expected_noContact)/(expected_inContact + expected_noContact + unexpected_inContact + unexpected_noContact);
+# Printing Results.
+print(f"Overall Contact Probability: {contactProb}");
+print(f"Probability of Contact Being Expected: {contact_expectedProb}\nProbability of Non-Contact Being Expected: {nonContact_expectedProb}");
+print(f"BBM Accuracy: {BBM_accuracy}");
+print(f"Contact Probabilties by Blob Overlap: {bySeparation_contactProbabilities}\nIn Contact Results: {inContactResults}\nNon-Contact Results: {notInContactResults}");

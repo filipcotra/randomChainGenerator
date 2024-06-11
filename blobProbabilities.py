@@ -3,14 +3,13 @@ from findSeparation import findSeparation;
 # This method will, for each particle, count how many non-contacts
 # are within the blob-region.
 def blobProbabilities(particleSet):
-    # Counters for raw contact/non-contact data.
-    expectedContact_inContact = 0;
-    expectedContact_notInContact = 0;
-    unexpectedContact_inContact = 0;
-    unexpectedContact_notInContact = 0;
     # Counters for contacts by effective separation.
-    bySeparation_inContact = {};
-    bySeparation_notInContact = {};
+    inContact = {};
+    notInContact = {};
+    expected_inContact = 0; # Particles that are expected to be in contact and are.
+    expected_noContact = 0; # Particles that are expected not to be in contact and are not.
+    unexpected_inContact = 0; # Particles that are expected not to be in contact but are.
+    unexpected_noContact = 0; # Particles that are expected to be in contact but are not.
     for particle in particleSet:
         # Finding how far each particle is from the current particle.
         separation = findSeparation(particle, particleSet);
@@ -19,35 +18,26 @@ def blobProbabilities(particleSet):
                 continue;
             # If the degree of separation minus the blob size of the
             # particle falls within the blob size of the selected particle,
-            # then it is an expected contact.
-            effectiveSeparation = separation[parKey] - parKey.blobSize
-            if effectiveSeparation <= particle.blobSize:
-                if parKey in particle.getContacts():
-                    expectedContact_inContact += 1;
-                    if effectiveSeparation not in bySeparation_inContact.keys():
-                        bySeparation_inContact[effectiveSeparation] = 1;
-                    else:
-                        bySeparation_inContact[effectiveSeparation] += 1;
+            # then it is an expected contact. Calculating the overlap between
+            # the blobs here.
+            trueSeparation = separation[parKey] - parKey.blobSize;
+            if parKey in particle.getContacts():
+                if trueSeparation <= particle.blobSize:
+                    expected_inContact += 1; # Would expect to be in contact and is.
                 else:
-                    expectedContact_notInContact += 1;
-                    if effectiveSeparation not in bySeparation_notInContact.keys():
-                        bySeparation_notInContact[effectiveSeparation] = 1;
-                    else:
-                        bySeparation_notInContact[effectiveSeparation] += 1;
-            # This would be unexpected to be in contact.
+                    unexpected_inContact += 1; # Would expect not to be in contact bus is.
+                if trueSeparation not in inContact.keys():
+                    inContact[trueSeparation] = 1;
+                else:
+                    inContact[trueSeparation] = inContact[trueSeparation] + 1;
             else:
-                if parKey in particle.getContacts():
-                    unexpectedContact_inContact += 1;
-                    if effectiveSeparation not in bySeparation_inContact.keys():
-                        bySeparation_inContact[effectiveSeparation] = 1;
-                    else:
-                        bySeparation_inContact[effectiveSeparation] += 1;
+                if trueSeparation <= particle.blobSize:
+                    unexpected_noContact += 1; # Would expect to be in contact but isn't.
                 else:
-                    unexpectedContact_notInContact += 1;
-                    if effectiveSeparation not in bySeparation_notInContact.keys():
-                        bySeparation_notInContact[effectiveSeparation] = 1;
-                    else:
-                        bySeparation_notInContact[effectiveSeparation] += 1;
-    return [expectedContact_inContact, expectedContact_notInContact,\
-            unexpectedContact_inContact, unexpectedContact_notInContact,\
-            bySeparation_inContact, bySeparation_notInContact]
+                    expected_noContact += 1; # Would expect not to be in contact and isn't.
+                if trueSeparation not in notInContact.keys():
+                    notInContact[trueSeparation] = 1;
+                else:
+                    notInContact[trueSeparation] = notInContact[trueSeparation] + 1;
+    return [inContact, notInContact,\
+            expected_inContact, unexpected_inContact, expected_noContact, unexpected_noContact];
