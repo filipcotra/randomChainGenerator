@@ -10,15 +10,23 @@ PARTICLE_TYPES = [G_particle, P_particle, A_particle, V_particle,\
 
 # Defining contact distance limit as being 6 angstroms.
 CONTACT_LIMIT = 2;
+# Defining the number of times each separation position must be sampled.
+SAMPLE_MIN = 1000;
 # Tracking results.
 contactExpected = 0;
 not_contactExpected = 0;
 # Tracking separation.
 contactExpected_bySep = {};
 not_contactExpected_bySep = {};
+# Tracking how much each sequence separation position was samples.
+countingSeparationSamples = {};
+# Boolean to track if all positions have been sufficiently samples.
+sampledSufficiently = False;
+# Tracking step count just to see progress.
+stepNum = 1;
 
-# Repeating 10,000 times.
-for i in range(10000):
+# Repeating until each separation position has been sufficiently sampled.
+while not sampledSufficiently:
     # Boolean to track if a contact has occurred.
     contactMade = False;
     # Making an initial particle at the origin.
@@ -78,8 +86,17 @@ for i in range(10000):
             not_contactExpected_bySep[par2_separation] += 1;
         else:
             not_contactExpected_bySep[par2_separation] = 1;
-    # Printing progress.
-    print(f"Step {i+1}/10,000 Complete");
+    if par2_separation in countingSeparationSamples.keys():
+        countingSeparationSamples[par2_separation] += 1;
+    else:
+        countingSeparationSamples[par2_separation] = 1;
+    separationKeys = sorted(countingSeparationSamples.keys())[:5];
+    if not any(countingSeparationSamples[sepPos] < SAMPLE_MIN for sepPos in separationKeys):
+        sampledSufficiently = True;
+    else:
+        print(f"Step {stepNum} Completed");
+        print(countingSeparationSamples)
+        stepNum += 1;
 # Printing the results.
 print(f"Proportion of Contacts That Were Expected: {contactExpected/(contactExpected + not_contactExpected)}");
 print(f"Separation Status of the Expected Contacts: {contactExpected_bySep}");
