@@ -73,8 +73,7 @@ for step in range(SIM_STEPS):
             contactsByRawSeparation[par2_separation] += 1;
         else:
             contactsByRawSeparation[par2_separation] = 1;
-        par2_trueSeparation = par2_separation - par2.blobSize - par1.blobSize;
-        par2_blobSeparation = par2_trueSeparation if par2_trueSeparation > 0 else 0;
+        par2_blobSeparation = par2_separation - par2.blobSize - par1.blobSize;
         if par2_blobSeparation in contactsByBlobSeparation.keys():
             contactsByBlobSeparation[par2_blobSeparation] += 1;
         else:
@@ -85,6 +84,16 @@ for step in range(SIM_STEPS):
         par1.addContact(par2);
         par2.addContact(par1);
         contactSet.pop(keySelection);
-    print(f"Step {step + 1}/1000 Completed");
-print(f"Raw Separation:\n{sorted(contactsByRawSeparation.items())}");
-print(f"Blob Separation:\n{sorted(contactsByBlobSeparation.items())}");
+    print(f"Step {step + 1}/{SIM_STEPS} Completed");
+# Writing raw separation data to file.
+rawSepItems = sorted(contactsByRawSeparation.items());
+rawFile = open(f"/Users/filipcotra/Desktop/contactsByRawSeparation_{SIM_STEPS}.tsv", "w");
+for rawItem in rawSepItems:
+    rawFile.write(f"{rawItem[0]}\t{rawItem[1]}\n");
+rawFile.close();
+# Writing blob separation data to file.
+blobSepItems = sorted(contactsByBlobSeparation.items());
+blobFile = open(f"/Users/filipcotra/Desktop/contactsByBlobSeparation_{SIM_STEPS}.tsv", "w");
+for blobItem in blobSepItems:
+    blobFile.write(f"{blobItem[0]}\t{blobItem[1]}\n");
+blobFile.close();

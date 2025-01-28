@@ -25,14 +25,15 @@ def generateParticle(currPar, particleType):
 
 ANGLE_DEGREES = 120;
 
-# Trying this out.
+# Generating a particle "N2" which is a specified distance and
+# angle from the N1 particle.
 def generateParticle_N2(currPar, particleType):
     np.random.seed();
     # Convert coordinates to numpy arrays.
     N = np.array([currPar.xCoord, currPar.yCoord, currPar.zCoord]);
     N1 = np.array([currPar.next.xCoord, currPar.next.yCoord, currPar.next.zCoord]);
     # Calculate the vector from N to N1.
-    v_NN1 = N1 - N;
+    v_NN1 = N - N1;
     # Calculate the unit vector of v_NN1.
     v_NN1_unit = v_NN1 / np.linalg.norm(v_NN1);
     # Generate a random perpendicular vector.
@@ -51,7 +52,7 @@ def generateParticle_N2(currPar, particleType):
              np.cross(rotation_axis_unit, v_NN1_unit) * np.sin(angle) +
              rotation_axis_unit * np.dot(rotation_axis_unit, v_NN1_unit) * (1 - np.cos(angle)));
     # Scale the vector to the desired distance of 1.32.
-    v_NN2 *= 1.32;
+    v_NN2 *= BOND_SIZE;
     # Calculate the coordinates of N2.
     N2 = N1 + v_NN2;
     # Double-checking the angle and distance.
@@ -61,11 +62,10 @@ def generateParticle_N2(currPar, particleType):
     magnitude_b = np.linalg.norm(v_N1N2);
     angle_rad = np.arccos(dot_product / (magnitude_a * magnitude_b));
     angle_deg = np.degrees(angle_rad);
-    if (not math.isclose(120, angle_deg, rel_tol = 0.1)
-            or not math.isclose(1.32, magnitude_a, rel_tol = 0.001)
-            or not math.isclose(1.32, magnitude_b, rel_tol = 0.001)):
+    if (not math.isclose(ANGLE_DEGREES, angle_deg, rel_tol = 0.1)
+            or not math.isclose(BOND_SIZE, magnitude_a, rel_tol = 0.001)
+            or not math.isclose(BOND_SIZE, magnitude_b, rel_tol = 0.001)):
         print(f"Things are going wrong: {angle_deg}, {magnitude_a}, {magnitude_b}");
         sys.exit(1);
-
     N2_coords = N2.tolist();
     return particleType(xCoord = N2_coords[0], yCoord = N2_coords[1], zCoord = N2_coords[2]);
