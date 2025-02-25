@@ -105,7 +105,8 @@ printDf(blobSorted, blobFile);
 indexList = list(blobSorted.index);
 index_0 = indexList.index(0);
 blobSorted_filtered = blobSorted.loc[indexList[index_0:]]; # All values from 0 onwards.
-blobSorted_filtered.loc[0, "COUNT"] = sum(blobSorted.loc[indexList[0 : index_0 + 1], "COUNT"]);
+blobSorted_filtered.rename(columns = {"COUNT": "PROB"});
+blobSorted_filtered.loc[0, "PROB"] = sum(blobSorted.loc[indexList[0 : index_0 + 1], "COUNT"]);
 blobProb = blobSorted_filtered.div(blobSorted_filtered.sum(axis = 0), axis = 1); # Probability distribution for each sector
 # Printing blob probability frame.
 blobProbFile = "blobProb";
