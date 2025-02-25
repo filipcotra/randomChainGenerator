@@ -1,8 +1,9 @@
-from particle import *;
-from generateParticle import *;
-from populateContacts import populateContacts;
-from findSeparation import findSeparation;
-import random as rand;
+import pandas as pd;
+from Particle.particle import *;
+from Particle.generateParticle import *;
+from Particle.populateContacts import populateContacts;
+from Core.findSeparation import findSeparation;
+from HandleIO.printBlobInfo import printDf;
 
 PARTICLE_TYPES = [G_particle, P_particle, A_particle, V_particle,\
                   L_particle, I_particle, M_particle, C_particle,\
@@ -11,13 +12,16 @@ PARTICLE_TYPES = [G_particle, P_particle, A_particle, V_particle,\
                   E_particle, D_particle, S_particle, T_particle];
 
 # The total amount that will be placed, not including the origin and
-# the particle immediately after.
+# the particle immediately after. The real amount of particles will be
+# this number + 2.
 NUM_PARTICLES = 98;
 # The total number of times the simulation will be run.
 SIM_STEPS = 1000;
+# Defining column names for data frame.
+COL_NAMES = ["COUNT"];
 # Tracking blob based stats.
-contactsByRawSeparation = {};
-contactsByBlobSeparation = {};
+contactsByRawSeparation = pd.DataFrame(columns = COL_NAMES);
+contactsByBlobSeparation = pd.DataFrame(columns = COL_NAMES);
 
 # Repeating 1000 times.
 for step in range(SIM_STEPS):
@@ -33,67 +37,76 @@ for step in range(SIM_STEPS):
     # Now that the first two particles exist, we can begin the loop to
     # create the N+2 particles relative to particle N. Beginning with
     # N = 0.
-    currPar = particle_0;
+    par_N = particle_0;
     # Tracking all particles that have been made.
-    particleSet = set([particle_0, particle_0.next])
-    # Tracking all contacts that exist.
-    contactSet = {};
+    particleSet = {particle_0, particle_0.next}
     # Looping through to make N+2 particles.
     for num in range(NUM_PARTICLES):
         # Generating a random residue type.
         particleType = PARTICLE_TYPES[rand.randint(0, len(PARTICLE_TYPES) - 1)];
         # Generating the N+2 particle.
-        nextPar = generateParticle_N2(currPar, particleType);
+        par_N2 = generateParticle_N2(par_N, particleType);
         # Setting N+2 to come after N+1.
-        currPar.next.setNext(nextPar);
+        par_N.next.setNext(par_N2);
         # Adding N+2 to the particle set.
-        particleSet.add(nextPar);
+        particleSet.add(par_N2);
         # Updating the current particle to N+1.
-        currPar = currPar.next;
-        # Adding contacts between N+1 and N+2.
-        currPar.addContact(currPar.next);
-        currPar.next.addContact(currPar);
+        # N = N + 1.
+        par_N = par_N.next;
+        # Adding contacts between N and N+1.
+        par_N.addContact(par_N.next);
+        par_N.next.addContact(par_N);
+    # Tracking the set of contacts that each particle has
+    # without assigning contacts to that particle. This set
+    # will contain sets indicating two particles that are in
+    # contact with one another.
+    contactSet = set();
     # Populating contacts for each particle.
     for par in particleSet:
-        contactSet = populateContacts(par, particleSet, contactSet);
+        populateContacts(par, particleSet, contactSet);
     # Randomly adding contacts and collecting resulting stats until
     # all the steps have been completed.
-    numContacts = len(contactSet);
-    keySelection = None;
+    numContacts = len(contactSet); # The total number of contacts in the random chain.
     for contact in range(numContacts):
         # Randomly selecting a contact from the existing set.
-        keySelection = rand.choice(list(contactSet.keys()));
-        newContact = list(contactSet[keySelection]);
+        selectedContact = rand.sample(list(contactSet), 1)[0];
+        newContact = list(selectedContact);
         par1, par2 = newContact[0], newContact[1];
-        # Gathering blob probability information based on the
-        # two contacts.
         separation = findSeparation(par1, particleSet);
         par2_separation = separation[par2];
-        if par2_separation in contactsByRawSeparation.keys():
-            contactsByRawSeparation[par2_separation] += 1;
+        # Gathering raw separation information.
+        if par2_separation in contactsByRawSeparation.index:
+            contactsByRawSeparation.at[par2_separation, "COUNT"] += 1;
         else:
-            contactsByRawSeparation[par2_separation] = 1;
+            contactsByRawSeparation.loc[par2_separation] = 1;
+        # Gathering blob probability information.
         par2_blobSeparation = par2_separation - par2.blobSize - par1.blobSize;
-        if par2_blobSeparation in contactsByBlobSeparation.keys():
-            contactsByBlobSeparation[par2_blobSeparation] += 1;
+        if par2_blobSeparation in contactsByBlobSeparation.index:
+            contactsByBlobSeparation.at[par2_blobSeparation, "COUNT"] += 1;
         else:
-            contactsByBlobSeparation[par2_blobSeparation] = 1;
+            contactsByBlobSeparation.loc[par2_blobSeparation] = 1;
         # Making the contact in the particle set and removing
-        # it from further consideration. This is done last so as
+        # it from further consideration. This is done last
         # to only impact future steps.
         par1.addContact(par2);
         par2.addContact(par1);
-        contactSet.pop(keySelection);
+        contactSet.remove(selectedContact);
     print(f"Step {step + 1}/{SIM_STEPS} Completed");
-# Writing raw separation data to file.
-rawSepItems = sorted(contactsByRawSeparation.items());
-rawFile = open(f"/Users/filipcotra/Desktop/contactsByRawSeparation_{SIM_STEPS}.tsv", "w");
-for rawItem in rawSepItems:
-    rawFile.write(f"{rawItem[0]}\t{rawItem[1]}\n");
-rawFile.close();
-# Writing blob separation data to file.
-blobSepItems = sorted(contactsByBlobSeparation.items());
-blobFile = open(f"/Users/filipcotra/Desktop/contactsByBlobSeparation_{SIM_STEPS}.tsv", "w");
-for blobItem in blobSepItems:
-    blobFile.write(f"{blobItem[0]}\t{blobItem[1]}\n");
-blobFile.close();
+# Writing data to files.
+# Raw separation.
+rawSorted = contactsByRawSeparation.sort_index();
+rawFile = "rawSep";
+printDf(rawSorted, rawFile);
+# Blob separation.
+blobSorted = contactsByBlobSeparation.sort_index();
+blobFile = "blobSep";
+printDf(blobSorted, blobFile);
+# Modifying blob probability frame.
+indexList = list(blobSorted.index);
+index_0 = indexList.index(0);
+blobSorted_filtered = blobSorted.loc[indexList[index_0:]]; # All values from 0 onwards.
+blobSorted_filtered.loc[0, "COUNT"] = sum(blobSorted.loc[indexList[0 : index_0 + 1], "COUNT"]);
+blobProb = blobSorted_filtered.div(blobSorted_filtered.sum(axis = 0), axis = 1); # Probability distribution for each sector
+# Printing blob probability frame.
+blobProbFile = "blobProb";
+printDf(blobProb, blobProbFile);
